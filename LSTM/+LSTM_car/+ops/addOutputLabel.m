@@ -1,5 +1,5 @@
 function [output] = addOutputLabel(output, outputNum, layerObj)
-import LSTM_error_NN_model_new_strcut_two_input.ops.*;
+import LSTM_car.ops.*;
 
 % This function adds data format labels to dlarrays in 'output'
 

@@ -1,6 +1,6 @@
 close all; clear; clc;
 %% ========================================================================
-LSTM_error = importTensorFlowNetwork('../LSTM/LSTM_error_NN_model_new_strcut_two_input');
+% LSTM_error = importNetworkFromTensorFlow('../LSTM/LSTM_error_NN_model_new_strcut_two_input');
 Set_Initialization_Error;
 KF_Config;
 % tor_s = 0.01; % GPS Frequency
@@ -19,6 +19,8 @@ Mug2mps2 = 9.80665E-6;%       convert micro-g to meter per second.^2
 % load('GPS_meas_1hz_otto_1000sec_car.mat');
 load('IMU_meas_otter_S_2000sec_profile.mat');
 load('GPS_meas_10hz_otto_S_2000sec.mat');
+% load('IMU_meas_1000sec_otto.mat')
+% load('GPS_meas_1hz_otto_1000sec.mat')
 %% ========================================================================
 % Initialize true navigation solution
 old_time = in_profile(1,1);
@@ -51,12 +53,24 @@ out_errors(1,2:4) = initialization_errors_Slave.delta_r_eb_n';
 out_errors(1,5:7) = initialization_errors_Slave.delta_v_eb_n';
 out_errors(1,8:10) = initialization_errors_Slave.delta_eul_nb_n';
 
+out_errors_master(1,1) = old_time;
+out_errors_master(1,2:4) = initialization_errors_Slave.delta_r_eb_n';
+out_errors_master(1,5:7) = initialization_errors_Slave.delta_v_eb_n';
+out_errors_master(1,8:10) = initialization_errors_Slave.delta_eul_nb_n';
+
 out_profile(1,1) = old_time;
 out_profile(1,2) = old_est_L_b_Master;
 out_profile(1,3) = old_est_lambda_b_Master;
 out_profile(1,4) = old_est_h_b_Master;
 out_profile(1,5:7) = old_est_v_eb_n_Master';
 out_profile(1,8:10) = CTM_to_Euler(old_est_C_b_n_Master')';
+out_profile_master(1,1) = old_time;
+out_profile_master(1,2) = old_est_L_b_Master;
+out_profile_master(1,3) = old_est_lambda_b_Master;
+out_profile_master(1,4) = old_est_h_b_Master;
+out_profile_master(1,5:7) = old_est_v_eb_n_Master';
+out_profile_master(1,8:10) = CTM_to_Euler(old_est_C_b_n_Master')';
+
 x_train = zeros(length(IMU_meas), 9);
 v_data = zeros(length(IMU_meas), 3);
 % Progress bar
@@ -123,19 +137,19 @@ for epoch = 2:no_epochs
 
         % dlX1 = dlarray(ones([6   1  10]), 'CBT');
         % dlX2 = dlarray(ones([1  1  9]), 'CBT');
-        imu_input = 10*(IMU_meas(epoch-9:epoch, 2:end)+[0, 0, 9.8, 0, 0, 0])';
-        ins_inpu = 100*x_train(epoch-9, :);
-        dlX1 = dlarray(reshape(imu_input, [6, 1, 10]), 'CBT');
-        dlX2 = dlarray(reshape(ins_inpu, [1  1  9]), 'CBT');
-        net = predict(LSTM_error, dlX1, dlX2);
-        preidicted_data = net/100; % normalized in train
-        preidicted_data = extractdata(preidicted_data);
-       est_L_b_Master = preidicted_data(1);
-       est_lambda_b_Master = preidicted_data(2);
-       est_h_b_Master = preidicted_data(3);
-       est_v_eb_n_Master = preidicted_data(4:6);
-       est_C_b_n_Master = Euler_to_CTM(preidicted_data(7:9)');
-       sum((in_profile(epoch, 2:end) - preidicted_data').^2)
+       %  imu_input = 10*(IMU_meas(epoch-9:epoch, 2:end)+[0, 0, 9.8, 0, 0, 0])';
+       %  ins_inpu = 100*x_train(epoch-9, :);
+       %  dlX1 = dlarray(reshape(imu_input, [6, 1, 10]), 'CBT');
+       %  dlX2 = dlarray(reshape(ins_inpu, [1  1  9]), 'CBT');
+       %  net = predict(LSTM_error, dlX1, dlX2);
+       %  preidicted_data = net/100; % normalized in train
+       %  preidicted_data = extractdata(preidicted_data);
+       % est_L_b_Master = preidicted_data(1);
+       % est_lambda_b_Master = preidicted_data(2);
+       % est_h_b_Master = preidicted_data(3);
+       % est_v_eb_n_Master = preidicted_data(4:6);
+       % est_C_b_n_Master = Euler_to_CTM(preidicted_data(7:9)');
+       % sum((in_profile(epoch, 2:end) - preidicted_data').^2)
 
        %%% fix in out of NN 10 and 100 
     % end
@@ -212,6 +226,13 @@ for epoch = 2:no_epochs
     out_profile(epoch,5:7) = est_v_eb_n_Slave';
     out_profile(epoch,8:10) = CTM_to_Euler(est_C_b_n_Slave')';
 
+    out_profile_master(epoch,1) = time;
+    out_profile_master(epoch,2) = est_L_b_Master;
+    out_profile_master(epoch,3) = est_lambda_b_Master;
+    out_profile_master(epoch,4) = est_h_b_Master;
+    out_profile_master(epoch,5:7) = est_v_eb_n_Master';
+    out_profile_master(epoch,8:10) = CTM_to_Euler(est_C_b_n_Master')';
+
     % Reset old values
     old_est_L_b_Slave = est_L_b_Slave;
     old_est_lambda_b_Slave = est_lambda_b_Slave;
@@ -233,6 +254,10 @@ for epoch = 2:no_epochs
         est_L_b_Slave,est_lambda_b_Slave,est_h_b_Slave,est_v_eb_n_Slave,est_C_b_n_Slave,true_L_b,...
         true_lambda_b,true_h_b,true_v_eb_n,true_C_b_n);
 
+    [delta_r_eb_n_master,delta_v_eb_n_master,delta_eul_nb_n_master] = Calculate_errors_NED(...
+        est_L_b_Master,est_lambda_b_Master,est_h_b_Master,est_v_eb_n_Master,est_C_b_n_Master,true_L_b,...
+        true_lambda_b,true_h_b,true_v_eb_n,true_C_b_n);
+
     old_time = time;
     old_true_L_b = true_L_b;
     old_true_lambda_b = true_lambda_b;
@@ -244,6 +269,11 @@ for epoch = 2:no_epochs
     out_errors(epoch,2:4) = delta_r_eb_n';
     out_errors(epoch,5:7) = delta_v_eb_n';
     out_errors(epoch,8:10) = delta_eul_nb_n';
+
+    out_errors_master(epoch,1) = time;
+    out_errors_master(epoch,2:4) = delta_r_eb_n_master';
+    out_errors_master(epoch,5:7) = delta_v_eb_n_master';
+    out_errors_master(epoch,8:10) = delta_eul_nb_n_master';
     AI_result(epoch,1) = time;
     AI_result(epoch,2:4) = delta_r_eb_n';
     AI_result(epoch,5:7) = delta_v_eb_n';

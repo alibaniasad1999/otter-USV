@@ -1,4 +1,3 @@
-
 micro_g_to_meters_per_second_squared = 9.80665E-6;
 % Initial attitude uncertainty per axis (deg, converted to rad)
 % LC_KF_config_Slave.init_att_unc = degtorad(1);

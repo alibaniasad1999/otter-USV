@@ -1,5 +1,5 @@
 function revTFInput = iPermuteToReverseTF(fwdTFInput, rank, isInternal)
-import LSTM_error_NN_model_new_strcut_two_input.ops.*;
+import LSTM_car.ops.*;
 %
 % Permutes the data from forward to reverse TensorFlow format. The input
 % data can either be a labeled or unformatted dlarray.
